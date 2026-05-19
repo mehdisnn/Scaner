@@ -1,31 +1,41 @@
 <!DOCTYPE html>
 <html lang="fa">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Barcode POS</title>
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0">
+
+<title>Barcode Scanner</title>
 
 <style>
 
 body{
+
     margin:0;
     padding:15px;
     font-family:tahoma;
     direction:rtl;
     background:#f5f5f5;
+    text-align:center;
+
 }
 
-/* ---------- اسکنر ---------- */
+/* ---------- دوربین ---------- */
 
 #scanner-container{
+
     width:100%;
     display:flex;
     justify-content:center;
     margin-top:10px;
+
 }
 
 #scanner{
+
     width:360px;
     max-width:95%;
     height:260px;
@@ -33,12 +43,13 @@ body{
     border-radius:15px;
     border:3px solid #ccc;
     background:black;
-    position:relative;
+
 }
 
-/* ---------- خط اسکن ---------- */
+/* ---------- خط ---------- */
 
 #line{
+
     width:360px;
     max-width:95%;
     height:4px;
@@ -46,96 +57,125 @@ body{
     margin:8px auto 20px auto;
     border-radius:10px;
     transition:0.2s;
+
 }
 
 #line.detected{
+
     background:limegreen;
+
 }
 
-/* ---------- لیست محصولات ---------- */
+/* ---------- لیست ---------- */
 
 #productList{
-    margin-top:15px;
+
+    margin-top:20px;
+
 }
 
 .product{
+
     background:white;
     border-radius:12px;
     padding:12px;
     margin-bottom:12px;
     box-shadow:0 2px 6px rgba(0,0,0,0.1);
+
 }
 
+/* ---------- بارکد ---------- */
+
 .barcode{
-    font-size:22px;
+
+    font-size:26px;
     font-weight:bold;
-    margin-bottom:10px;
-    text-align:center;
+    margin-bottom:12px;
+
 }
 
 /* ---------- فیلدها ---------- */
 
 .fields{
+
     display:flex;
     gap:10px;
     flex-wrap:wrap;
+
 }
 
 .field{
+
     flex:1;
     min-width:120px;
+
 }
 
 .field label{
+
     display:block;
     margin-bottom:5px;
-    font-size:15px;
+    font-size:16px;
     font-weight:bold;
+
 }
 
 .field input{
+
     width:100%;
-    height:55px;
+    height:60px;
     border:none;
     border-radius:10px;
-    font-size:24px;
+    font-size:28px;
     text-align:center;
     font-weight:bold;
     color:white;
+
 }
 
 /* قیمت اصلی */
 
 .original-price{
+
     background:#d32f2f;
+
 }
 
 /* قیمت تخفیف */
 
 .discount-price{
+
     background:#2e7d32;
+
 }
 
 /* تعداد */
 
 .count-box{
+
     background:#1565c0;
+
 }
 
 </style>
+
 </head>
 
 <body>
 
-<h2 style="text-align:center;">
-اسکن بارکد محصولات
+<h2>
+اسکن بارکد
 </h2>
 
-<!-- اسکنر -->
+<!-- دوربین -->
 
 <div id="scanner-container">
+
     <div id="scanner"></div>
+
 </div>
+
+<!-- خط -->
 
 <div id="line"></div>
 
@@ -146,7 +186,10 @@ body{
 <!-- صدای بوق -->
 
 <audio id="beep">
-    <source src="https://actions.google.com/sounds/v1/cartoon/beep_short.ogg">
+
+<source
+src="https://actions.google.com/sounds/v1/cartoon/beep_short.ogg">
+
 </audio>
 
 <!-- Quagga -->
@@ -159,36 +202,35 @@ body{
 
 let detectedRecently = false;
 
-/* ---------------- شروع دوربین ---------------- */
+/* ---------------- راه‌اندازی دوربین ---------------- */
+/* همون الگوریتم قبلی خودت */
 
 Quagga.init({
 
-    inputStream: {
+    inputStream:{
 
-        type: "LiveStream",
+        name:"Live",
 
-        target: document.querySelector("#scanner"),
+        type:"LiveStream",
 
-        constraints: {
+        target:
+            document.querySelector("#scanner"),
 
-            facingMode: "environment",
+        constraints:{
 
-            width: 1280,
-            height: 720
+            facingMode:"environment"
 
         }
 
     },
 
-    decoder: {
+    decoder:{
 
-        readers: [
+        readers:[
 
             "ean_reader",
 
-            "code_128_reader",
-
-            "ean_8_reader"
+            "code_128_reader"
 
         ]
 
@@ -196,7 +238,7 @@ Quagga.init({
 
 },
 
-function(err){
+async function(err){
 
     if(err){
 
@@ -214,7 +256,8 @@ function(err){
 
 });
 
-/* ---------------- تشخیص بارکد ---------------- */
+/* ---------------- هنگام تشخیص ---------------- */
+/* همون ساختار قبلی */
 
 Quagga.onDetected(async function(data){
 
@@ -222,13 +265,13 @@ Quagga.onDetected(async function(data){
 
     detectedRecently = true;
 
-    const barcode = data.codeResult.code;
+    const code =
+        data.codeResult.code;
 
-    console.log(barcode);
+    /* بوق موفقیت */
 
-    /* بوق */
-
-    const beep = document.getElementById("beep");
+    const beep =
+        document.getElementById("beep");
 
     beep.currentTime = 0;
 
@@ -236,13 +279,15 @@ Quagga.onDetected(async function(data){
 
     /* خط سبز */
 
-    const line = document.getElementById("line");
+    const line =
+        document.getElementById("line");
 
     line.classList.add("detected");
 
-    /* گرفتن اطلاعات از گوگل شیت */
+    /* دریافت اطلاعات */
 
-    const product = await getProductFromSheet(barcode);
+    const product =
+        await getProductFromSheet(code);
 
     /* افزودن به لیست */
 
@@ -256,41 +301,45 @@ Quagga.onDetected(async function(data){
 
         detectedRecently = false;
 
-    },1200);
+    },1000);
 
 });
 
 /* ---------------- گوگل شیت ---------------- */
 
 /*
-فرمت فایل گوگل شیت:
+
+ستون ها:
 
 A = barcode
-B = original price
-C = discount price
+B = original_price
+C = discount_price
 
 */
 
-/* لینک JSON گوگل شیت */
+/* آدرس فایل */
 
 const SHEET_URL =
 "https://opensheet.elk.sh/SPREADSHEET_ID/Sheet1";
 
 /*
-به جای:
+به جای
 SPREADSHEET_ID
-آیدی فایل گوگل شیت خودت را بگذار
+آیدی گوگل شیت خودت را قرار بده
 */
 
 async function getProductFromSheet(barcode){
 
     try{
 
-        const response = await fetch(SHEET_URL);
+        const response =
+            await fetch(SHEET_URL);
 
-        const data = await response.json();
+        const data =
+            await response.json();
 
-        const item = data.find(x => x.barcode == barcode);
+        const item =
+            data.find(x => x.barcode == barcode);
 
         if(item){
 
@@ -298,29 +347,31 @@ async function getProductFromSheet(barcode){
 
                 barcode: barcode,
 
-                originalPrice: item.original_price,
+                originalPrice:
+                    item.original_price,
 
-                discountPrice: item.discount_price
+                discountPrice:
+                    item.discount_price
 
             };
 
         }
 
-    } catch(e){
+    }
+
+    catch(e){
 
         console.log(e);
 
     }
 
-    /* اگر پیدا نشد */
-
     return {
 
         barcode: barcode,
 
-        originalPrice: "ناموجود",
+        originalPrice:"ناموجود",
 
-        discountPrice: "ناموجود"
+        discountPrice:"ناموجود"
 
     };
 
@@ -341,7 +392,9 @@ function addProduct(product){
     div.innerHTML = `
 
         <div class="barcode">
+
             ${product.barcode}
+
         </div>
 
         <div class="fields">
@@ -349,13 +402,19 @@ function addProduct(product){
             <div class="field">
 
                 <label>
+
                     قیمت پشت کالا
+
                 </label>
 
                 <input
+
                     class="original-price"
+
                     value="${product.originalPrice}"
+
                     readonly
+
                 >
 
             </div>
@@ -363,13 +422,19 @@ function addProduct(product){
             <div class="field">
 
                 <label>
+
                     قیمت تخفیفی
+
                 </label>
 
                 <input
+
                     class="discount-price"
+
                     value="${product.discountPrice}"
+
                     readonly
+
                 >
 
             </div>
@@ -377,18 +442,25 @@ function addProduct(product){
             <div class="field">
 
                 <label>
+
                     تعداد
+
                 </label>
 
                 <input
+
                     class="count-box"
+
                     type="number"
+
                     value="1"
+
                 >
 
             </div>
 
         </div>
+
     `;
 
     container.prepend(div);
@@ -396,6 +468,7 @@ function addProduct(product){
 }
 
 /* ---------------- autofocus + zoom ---------------- */
+/* همون کد قبلی خودت */
 
 async function enableCameraFeatures(){
 
@@ -409,6 +482,8 @@ async function enableCameraFeatures(){
 
         const advanced = [];
 
+        /* فوکوس پیوسته */
+
         if(capabilities.focusMode){
 
             advanced.push({
@@ -418,6 +493,8 @@ async function enableCameraFeatures(){
             });
 
         }
+
+        /* زوم */
 
         if(capabilities.zoom){
 
@@ -448,4 +525,5 @@ async function enableCameraFeatures(){
 </script>
 
 </body>
+
 </html>
