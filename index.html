@@ -1,193 +1,448 @@
 <!DOCTYPE html>
 <html lang="fa">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Barcode POS</title>
 
 <style>
+
 body{
-    font-family: sans-serif;
-    direction: rtl;
-    padding: 10px;
+    margin:0;
+    padding:15px;
+    font-family:tahoma;
+    direction:rtl;
+    background:#f5f5f5;
+}
+
+/* ---------- اسکنر ---------- */
+
+#scanner-container{
+    width:100%;
+    display:flex;
+    justify-content:center;
+    margin-top:10px;
 }
 
 #scanner{
-    width: 100%;
-    height: 250px;
-    border: 2px solid #ccc;
-    margin-bottom: 10px;
+    width:360px;
+    max-width:95%;
+    height:260px;
+    overflow:hidden;
+    border-radius:15px;
+    border:3px solid #ccc;
+    background:black;
+    position:relative;
 }
 
+/* ---------- خط اسکن ---------- */
+
 #line{
-    height: 3px;
-    background: red;
-    margin: 10px 0;
-    transition: 0.2s;
+    width:360px;
+    max-width:95%;
+    height:4px;
+    background:red;
+    margin:8px auto 20px auto;
+    border-radius:10px;
+    transition:0.2s;
 }
 
 #line.detected{
-    background: green;
+    background:limegreen;
 }
 
-.item{
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px;
-    border-bottom: 1px solid #eee;
+/* ---------- لیست محصولات ---------- */
+
+#productList{
+    margin-top:15px;
 }
 
-.item img{
-    width: 40px;
-    height: 40px;
-    background: #ddd;
+.product{
+    background:white;
+    border-radius:12px;
+    padding:12px;
+    margin-bottom:12px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.1);
 }
 
-.item-info{
-    flex: 1;
+.barcode{
+    font-size:22px;
+    font-weight:bold;
+    margin-bottom:10px;
+    text-align:center;
 }
 
-.item input{
-    width: 100px;
+/* ---------- فیلدها ---------- */
+
+.fields{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
 }
+
+.field{
+    flex:1;
+    min-width:120px;
+}
+
+.field label{
+    display:block;
+    margin-bottom:5px;
+    font-size:15px;
+    font-weight:bold;
+}
+
+.field input{
+    width:100%;
+    height:55px;
+    border:none;
+    border-radius:10px;
+    font-size:24px;
+    text-align:center;
+    font-weight:bold;
+    color:white;
+}
+
+/* قیمت اصلی */
+
+.original-price{
+    background:#d32f2f;
+}
+
+/* قیمت تخفیف */
+
+.discount-price{
+    background:#2e7d32;
+}
+
+/* تعداد */
+
+.count-box{
+    background:#1565c0;
+}
+
 </style>
 </head>
 
 <body>
 
-<h3>اسکن بارکد</h3>
+<h2 style="text-align:center;">
+اسکن بارکد محصولات
+</h2>
 
-<div id="scanner"></div>
+<!-- اسکنر -->
+
+<div id="scanner-container">
+    <div id="scanner"></div>
+</div>
+
 <div id="line"></div>
 
-<input id="result" placeholder="بارکد" readonly />
+<!-- لیست محصولات -->
 
-<h3>لیست محصولات</h3>
 <div id="productList"></div>
 
-<audio id="beepSound">
-    <source src="beep.mp3" type="audio/mpeg">
+<!-- صدای بوق -->
+
+<audio id="beep">
+    <source src="https://actions.google.com/sounds/v1/cartoon/beep_short.ogg">
 </audio>
 
 <!-- Quagga -->
+
 <script src="https://unpkg.com/quagga/dist/quagga.min.js"></script>
 
 <script>
 
+/* جلوگیری از اسکن پشت سر هم */
+
 let detectedRecently = false;
 
-// -------------------- شروع اسکن --------------------
+/* ---------------- شروع دوربین ---------------- */
+
 Quagga.init({
+
     inputStream: {
+
         type: "LiveStream",
+
         target: document.querySelector("#scanner"),
+
         constraints: {
-            facingMode: "environment"
+
+            facingMode: "environment",
+
+            width: 1280,
+            height: 720
+
         }
+
     },
+
     decoder: {
-        readers: ["ean_reader", "code_128_reader"]
+
+        readers: [
+
+            "ean_reader",
+
+            "code_128_reader",
+
+            "ean_8_reader"
+
+        ]
+
     }
-}, function(err){
+
+},
+
+function(err){
 
     if(err){
+
         console.log(err);
+
         alert("خطا در راه‌اندازی دوربین");
+
         return;
+
     }
 
     Quagga.start();
+
     enableCameraFeatures();
+
 });
 
-// -------------------- هنگام تشخیص --------------------
-Quagga.onDetected(function(data){
+/* ---------------- تشخیص بارکد ---------------- */
+
+Quagga.onDetected(async function(data){
 
     if(detectedRecently) return;
+
     detectedRecently = true;
 
-    const code = data.codeResult.code;
+    const barcode = data.codeResult.code;
 
-    document.getElementById("result").value = code;
+    console.log(barcode);
 
-    // 🔊 بوق تایید
-    const beep = document.getElementById("beepSound");
+    /* بوق */
+
+    const beep = document.getElementById("beep");
+
     beep.currentTime = 0;
+
     beep.play();
 
-    // 🔥 اطلاعات محصول (فعلاً نمونه)
-    const product = getProductInfo(code);
+    /* خط سبز */
 
-    addProductToList(product);
-
-    // 📳 ویبره
-    navigator.vibrate?.(150);
-
-    // خط سبز
     const line = document.getElementById("line");
+
     line.classList.add("detected");
 
+    /* گرفتن اطلاعات از گوگل شیت */
+
+    const product = await getProductFromSheet(barcode);
+
+    /* افزودن به لیست */
+
+    addProduct(product);
+
+    navigator.vibrate?.(150);
+
     setTimeout(()=>{
+
         line.classList.remove("detected");
+
         detectedRecently = false;
-    }, 1000);
+
+    },1200);
+
 });
 
-// -------------------- اطلاعات محصول (نمونه) --------------------
-function getProductInfo(barcode){
+/* ---------------- گوگل شیت ---------------- */
+
+/*
+فرمت فایل گوگل شیت:
+
+A = barcode
+B = original price
+C = discount price
+
+*/
+
+/* لینک JSON گوگل شیت */
+
+const SHEET_URL =
+"https://opensheet.elk.sh/SPREADSHEET_ID/Sheet1";
+
+/*
+به جای:
+SPREADSHEET_ID
+آیدی فایل گوگل شیت خودت را بگذار
+*/
+
+async function getProductFromSheet(barcode){
+
+    try{
+
+        const response = await fetch(SHEET_URL);
+
+        const data = await response.json();
+
+        const item = data.find(x => x.barcode == barcode);
+
+        if(item){
+
+            return {
+
+                barcode: barcode,
+
+                originalPrice: item.original_price,
+
+                discountPrice: item.discount_price
+
+            };
+
+        }
+
+    } catch(e){
+
+        console.log(e);
+
+    }
+
+    /* اگر پیدا نشد */
+
     return {
-        code: barcode,
-        name: "محصول " + barcode,
-        image: "https://via.placeholder.com/40"
+
+        barcode: barcode,
+
+        originalPrice: "ناموجود",
+
+        discountPrice: "ناموجود"
+
     };
+
 }
 
-// -------------------- افزودن به لیست --------------------
-function addProductToList(product){
+/* ---------------- افزودن محصول ---------------- */
 
-    const container = document.getElementById("productList");
+function addProduct(product){
 
-    const item = document.createElement("div");
-    item.className = "item";
+    const container =
+        document.getElementById("productList");
 
-    item.innerHTML = `
-        <img src="${product.image}" />
-        
-        <div class="item-info">
-            <div>${product.name}</div>
-            <small>کد: ${product.code}</small>
+    const div =
+        document.createElement("div");
+
+    div.className = "product";
+
+    div.innerHTML = `
+
+        <div class="barcode">
+            ${product.barcode}
         </div>
 
-        <input type="number" placeholder="قیمت" />
+        <div class="fields">
+
+            <div class="field">
+
+                <label>
+                    قیمت پشت کالا
+                </label>
+
+                <input
+                    class="original-price"
+                    value="${product.originalPrice}"
+                    readonly
+                >
+
+            </div>
+
+            <div class="field">
+
+                <label>
+                    قیمت تخفیفی
+                </label>
+
+                <input
+                    class="discount-price"
+                    value="${product.discountPrice}"
+                    readonly
+                >
+
+            </div>
+
+            <div class="field">
+
+                <label>
+                    تعداد
+                </label>
+
+                <input
+                    class="count-box"
+                    type="number"
+                    value="1"
+                >
+
+            </div>
+
+        </div>
     `;
 
-    container.appendChild(item);
+    container.prepend(div);
+
 }
 
-// -------------------- فوکوس و زوم دوربین --------------------
+/* ---------------- autofocus + zoom ---------------- */
+
 async function enableCameraFeatures(){
 
     try{
 
-        const track = Quagga.CameraAccess.getActiveTrack();
-        const capabilities = track.getCapabilities();
+        const track =
+            Quagga.CameraAccess.getActiveTrack();
+
+        const capabilities =
+            track.getCapabilities();
+
         const advanced = [];
 
         if(capabilities.focusMode){
-            advanced.push({ focusMode: "continuous" });
+
+            advanced.push({
+
+                focusMode:"continuous"
+
+            });
+
         }
 
         if(capabilities.zoom){
-            advanced.push({ zoom: 2 });
+
+            advanced.push({
+
+                zoom:2
+
+            });
+
         }
 
         await track.applyConstraints({
-            advanced: advanced
+
+            advanced:advanced
+
         });
 
-    } catch(e){
-        console.log(e);
     }
+
+    catch(e){
+
+        console.log(e);
+
+    }
+
 }
 
 </script>
