@@ -6,15 +6,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Live Barcode Scanner</title>
+<title>Barcode Scanner</title>
 
-<script src="https://unpkg.com/@zxing/library@latest"></script>
+<script src="https://unpkg.com/@zxing/browser@latest"></script>
 
 <style>
 
 body{
     margin:0;
-    padding:0;
     background:#111;
     color:white;
     font-family:tahoma;
@@ -26,7 +25,7 @@ body{
 }
 
 h2{
-    margin-top:15px;
+    margin-top:10px;
 }
 
 button{
@@ -36,17 +35,17 @@ button{
     border-radius:12px;
     padding:14px 24px;
     font-size:18px;
+    margin:10px;
     cursor:pointer;
-    margin-top:10px;
 }
 
 #videoContainer{
     position:relative;
     width:95%;
     max-width:550px;
-    margin:20px auto;
+    margin:auto;
+    border-radius:16px;
     overflow:hidden;
-    border-radius:18px;
     background:black;
 }
 
@@ -54,12 +53,11 @@ video{
     width:100%;
     height:auto;
     display:block;
-    object-fit:cover;
 }
 
-/* خط قرمز اسکن */
+/* خط اسکن */
 
-#scanLine{
+#line{
     position:absolute;
     top:50%;
     left:10%;
@@ -87,17 +85,16 @@ video{
 
 }
 
-/* سبز شدن هنگام تشخیص */
-
 .detected{
     background:#00ff00 !important;
-    box-shadow:0 0 18px #00ff00 !important;
+    box-shadow:0 0 20px #00ff00 !important;
 }
 
 input{
     width:90%;
     max-width:550px;
     padding:14px;
+    margin-top:15px;
     border:none;
     border-radius:10px;
     font-size:20px;
@@ -105,8 +102,8 @@ input{
 }
 
 .info{
-    margin-top:15px;
     color:#ccc;
+    margin-top:15px;
     line-height:1.8;
     font-size:14px;
 }
@@ -125,31 +122,35 @@ input{
 شروع اسکن
 </button>
 
-<br><br>
-
 <input
 type="text"
 id="result"
 placeholder="نتیجه اسکن"
 />
 
+<br><br>
+
+<select id="cameraSelect"></select>
+
+<br><br>
+
 <div id="videoContainer">
 
     <video
         id="video"
         autoplay
-        playsinline
         muted
+        playsinline
     ></video>
 
-    <div id="scanLine"></div>
+    <div id="line"></div>
 
 </div>
 
 <div class="info">
 
 بارکد را روی خط قرمز نگه دارید<br>
-فاصله را کم و زیاد کنید تا فوکوس بهتر شود
+بهتر است نور کافی باشد
 
 </div>
 
@@ -158,50 +159,97 @@ placeholder="نتیجه اسکن"
 <script>
 
 let codeReader;
+let selectedDeviceId = null;
+
+async function loadCameras(){
+
+    try{
+
+        const devices =
+            await ZXingBrowser.BrowserCodeReader.listVideoInputDevices();
+
+        const select =
+            document.getElementById("cameraSelect");
+
+        select.innerHTML = "";
+
+        devices.forEach((device,index)=>{
+
+            const option =
+                document.createElement("option");
+
+            option.value = device.deviceId;
+
+            option.text =
+                device.label || ("Camera " + index);
+
+            // انتخاب خودکار دوربین پشت
+
+            const label =
+                option.text.toLowerCase();
+
+            if(
+                label.includes("back") ||
+                label.includes("rear") ||
+                label.includes("environment")
+            ){
+                selectedDeviceId = device.deviceId;
+            }
+
+            select.appendChild(option);
+
+        });
+
+        if(!selectedDeviceId && devices.length){
+
+            // آخرین دوربین معمولا پشت است
+
+            selectedDeviceId =
+                devices[devices.length - 1].deviceId;
+
+        }
+
+        select.value = selectedDeviceId;
+
+        select.onchange = ()=>{
+
+            selectedDeviceId = select.value;
+
+        };
+
+    }
+    catch(err){
+
+        alert("خطا در خواندن دوربین‌ها");
+
+        console.log(err);
+
+    }
+
+}
 
 async function startScanner(){
 
     try{
 
-        const video = document.getElementById("video");
+        if(codeReader){
 
-        // باز کردن فقط دوربین پشت
+            codeReader.reset();
 
-        const stream =
-            await navigator.mediaDevices.getUserMedia({
+        }
 
-                video:{
-
-                    facingMode:{
-                        exact:"environment"
-                    },
-
-                    width:{
-                        ideal:1280
-                    },
-
-                    height:{
-                        ideal:720
-                    }
-
-                },
-
-                audio:false
-
-            });
-
-        video.srcObject = stream;
-
-        await video.play();
+        const video =
+            document.getElementById("video");
 
         codeReader =
-            new ZXing.BrowserMultiFormatReader();
+            new ZXingBrowser.BrowserMultiFormatReader();
 
-        codeReader.decodeFromVideoElement(
+        await codeReader.decodeFromVideoDevice(
 
+            selectedDeviceId,
             video,
 
-            (result, err) => {
+            (result,err)=>{
 
                 if(result){
 
@@ -209,20 +257,18 @@ async function startScanner(){
                         .getElementById("result")
                         .value = result.text;
 
-                    // سبز شدن خط
-
                     const line =
-                        document.getElementById("scanLine");
+                        document.getElementById("line");
 
                     line.classList.add("detected");
 
-                    navigator.vibrate?.(150);
+                    navigator.vibrate?.(200);
 
-                    setTimeout(() => {
+                    setTimeout(()=>{
 
                         line.classList.remove("detected");
 
-                    }, 400);
+                    },500);
 
                 }
 
@@ -233,15 +279,17 @@ async function startScanner(){
     }
     catch(err){
 
-        console.log(err);
-
         alert(
-            "خطا در دسترسی به دوربین پشت"
+            "اجازه دوربین داده نشده یا Chrome نیست"
         );
+
+        console.log(err);
 
     }
 
 }
+
+loadCameras();
 
 </script>
 
