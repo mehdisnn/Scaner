@@ -2,18 +2,19 @@
 <html lang="fa" dir="rtl">
 
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>Live Barcode Scanner</title>
 
-<!-- ZXING -->
 <script src="https://unpkg.com/@zxing/library@latest"></script>
 
 <style>
 
 body{
     margin:0;
+    padding:0;
     background:#111;
     color:white;
     font-family:tahoma;
@@ -24,12 +25,16 @@ body{
     padding:15px;
 }
 
+h2{
+    margin-top:15px;
+}
+
 button{
     background:#e53935;
     color:white;
     border:none;
-    border-radius:10px;
-    padding:14px 22px;
+    border-radius:12px;
+    padding:14px 24px;
     font-size:18px;
     cursor:pointer;
     margin-top:10px;
@@ -37,11 +42,11 @@ button{
 
 #videoContainer{
     position:relative;
-    width:100%;
-    max-width:500px;
+    width:95%;
+    max-width:550px;
     margin:20px auto;
-    border-radius:16px;
     overflow:hidden;
+    border-radius:18px;
     background:black;
 }
 
@@ -49,36 +54,49 @@ video{
     width:100%;
     height:auto;
     display:block;
+    object-fit:cover;
 }
 
-/* خط قرمز اسکن /
+/* خط قرمز اسکن */
+
 #scanLine{
     position:absolute;
     top:50%;
     left:10%;
     width:80%;
-    height:3px;
+    height:4px;
     background:red;
-    box-shadow:0 0 12px red;
-    z-index:1000;
-    animation:pulse 1.2s infinite;
+    box-shadow:0 0 15px red;
+    z-index:999;
+    animation:pulse 1s infinite;
 }
 
 @keyframes pulse{
-    0%{opacity:0.3;}
-    50%{opacity:1;}
-    100%{opacity:0.3;}
+
+    0%{
+        opacity:0.3;
+    }
+
+    50%{
+        opacity:1;
+    }
+
+    100%{
+        opacity:0.3;
+    }
+
 }
 
-/ وقتی بارکد پیدا شد */
+/* سبز شدن هنگام تشخیص */
+
 .detected{
     background:#00ff00 !important;
-    box-shadow:0 0 15px #00ff00 !important;
+    box-shadow:0 0 18px #00ff00 !important;
 }
 
 input{
     width:90%;
-    max-width:500px;
+    max-width:550px;
     padding:14px;
     border:none;
     border-radius:10px;
@@ -87,12 +105,14 @@ input{
 }
 
 .info{
-    color:#ccc;
     margin-top:15px;
+    color:#ccc;
     line-height:1.8;
+    font-size:14px;
 }
 
 </style>
+
 </head>
 
 <body>
@@ -101,15 +121,26 @@ input{
 
 <h2>اسکن زنده بارکد و QR</h2>
 
-<button onclick="startScanner()">شروع اسکن</button>
+<button onclick="startScanner()">
+شروع اسکن
+</button>
 
 <br><br>
 
-<input type="text" id="result" placeholder="نتیجه اسکن">
+<input
+type="text"
+id="result"
+placeholder="نتیجه اسکن"
+/>
 
 <div id="videoContainer">
 
-    <video id="video" muted playsinline></video>
+    <video
+        id="video"
+        autoplay
+        playsinline
+        muted
+    ></video>
 
     <div id="scanLine"></div>
 
@@ -118,7 +149,7 @@ input{
 <div class="info">
 
 بارکد را روی خط قرمز نگه دارید<br>
-اگر اسکن نشد فاصله را کمتر کنید
+فاصله را کم و زیاد کنید تا فوکوس بهتر شود
 
 </div>
 
@@ -126,7 +157,7 @@ input{
 
 <script>
 
-let codeReader = null;
+let codeReader;
 
 async function startScanner(){
 
@@ -134,48 +165,64 @@ async function startScanner(){
 
         const video = document.getElementById("video");
 
-        codeReader = new ZXing.BrowserMultiFormatReader();
+        // باز کردن فقط دوربین پشت
 
-        const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
+        const stream =
+            await navigator.mediaDevices.getUserMedia({
 
-        let selectedDeviceId = devices[0].deviceId;
+                video:{
 
-        // انتخاب دوربین پشت
-        devices.forEach(device => {
+                    facingMode:{
+                        exact:"environment"
+                    },
 
-            const label = device.label.toLowerCase();
+                    width:{
+                        ideal:1280
+                    },
 
-            if(
-                label.includes("back") ||
-                label.includes("rear") ||
-                label.includes("environment")
-            ){
-                selectedDeviceId = device.deviceId;
-            }
+                    height:{
+                        ideal:720
+                    }
 
-        });
+                },
 
-        codeReader.decodeFromVideoDevice(
+                audio:false
 
-            selectedDeviceId,
+            });
+
+        video.srcObject = stream;
+
+        await video.play();
+
+        codeReader =
+            new ZXing.BrowserMultiFormatReader();
+
+        codeReader.decodeFromVideoElement(
+
             video,
 
             (result, err) => {
 
                 if(result){
 
-                    document.getElementById("result").value = result.text;
+                    document
+                        .getElementById("result")
+                        .value = result.text;
 
-                    // سبز شدن خط هنگام تشخیص
-                    const line = document.getElementById("scanLine");
+                    // سبز شدن خط
+
+                    const line =
+                        document.getElementById("scanLine");
 
                     line.classList.add("detected");
 
                     navigator.vibrate?.(150);
 
                     setTimeout(() => {
+
                         line.classList.remove("detected");
-                    }, 500);
+
+                    }, 400);
 
                 }
 
@@ -184,11 +231,13 @@ async function startScanner(){
         );
 
     }
-    catch(e){
+    catch(err){
 
-        alert("خطا در دسترسی به دوربین");
+        console.log(err);
 
-        console.log(e);
+        alert(
+            "خطا در دسترسی به دوربین پشت"
+        );
 
     }
 
