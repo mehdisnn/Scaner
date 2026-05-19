@@ -6,7 +6,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Barcode Scanner</title>
+<title>Professional Barcode Scanner</title>
 
 <script src="https://unpkg.com/@zxing/browser@latest"></script>
 
@@ -24,38 +24,32 @@ body{
     padding:15px;
 }
 
-h2{
-    margin-top:10px;
-}
-
 button{
     background:#e53935;
     color:white;
     border:none;
     border-radius:12px;
-    padding:14px 24px;
+    padding:14px 22px;
     font-size:18px;
     margin:10px;
-    cursor:pointer;
 }
 
 #videoContainer{
     position:relative;
     width:95%;
-    max-width:550px;
+    max-width:600px;
     margin:auto;
-    border-radius:16px;
     overflow:hidden;
+    border-radius:16px;
     background:black;
 }
 
 video{
     width:100%;
-    height:auto;
     display:block;
 }
 
-/* خط اسکن */
+/* خط قرمز */
 
 #line{
     position:absolute;
@@ -92,12 +86,12 @@ video{
 
 input{
     width:90%;
-    max-width:550px;
+    max-width:600px;
     padding:14px;
-    margin-top:15px;
     border:none;
     border-radius:10px;
-    font-size:20px;
+    margin-top:15px;
+    font-size:22px;
     text-align:center;
 }
 
@@ -105,7 +99,6 @@ input{
     color:#ccc;
     margin-top:15px;
     line-height:1.8;
-    font-size:14px;
 }
 
 </style>
@@ -116,21 +109,19 @@ input{
 
 <div class="container">
 
-<h2>اسکن زنده بارکد و QR</h2>
+<h2>اسکن حرفه‌ای بارکد و QR</h2>
 
 <button onclick="startScanner()">
 شروع اسکن
 </button>
+
+<br>
 
 <input
 type="text"
 id="result"
 placeholder="نتیجه اسکن"
 />
-
-<br><br>
-
-<select id="cameraSelect"></select>
 
 <br><br>
 
@@ -149,8 +140,8 @@ placeholder="نتیجه اسکن"
 
 <div class="info">
 
-بارکد را روی خط قرمز نگه دارید<br>
-بهتر است نور کافی باشد
+بارکد را دقیقاً روی خط قرمز نگه دارید<br>
+برای بارکد خطی فاصله کم باشد
 
 </div>
 
@@ -158,138 +149,153 @@ placeholder="نتیجه اسکن"
 
 <script>
 
-let codeReader;
-let selectedDeviceId = null;
-
-async function loadCameras(){
-
-    try{
-
-        const devices =
-            await ZXingBrowser.BrowserCodeReader.listVideoInputDevices();
-
-        const select =
-            document.getElementById("cameraSelect");
-
-        select.innerHTML = "";
-
-        devices.forEach((device,index)=>{
-
-            const option =
-                document.createElement("option");
-
-            option.value = device.deviceId;
-
-            option.text =
-                device.label || ("Camera " + index);
-
-            // انتخاب خودکار دوربین پشت
-
-            const label =
-                option.text.toLowerCase();
-
-            if(
-                label.includes("back") ||
-                label.includes("rear") ||
-                label.includes("environment")
-            ){
-                selectedDeviceId = device.deviceId;
-            }
-
-            select.appendChild(option);
-
-        });
-
-        if(!selectedDeviceId && devices.length){
-
-            // آخرین دوربین معمولا پشت است
-
-            selectedDeviceId =
-                devices[devices.length - 1].deviceId;
-
-        }
-
-        select.value = selectedDeviceId;
-
-        select.onchange = ()=>{
-
-            selectedDeviceId = select.value;
-
-        };
-
-    }
-    catch(err){
-
-        alert("خطا در خواندن دوربین‌ها");
-
-        console.log(err);
-
-    }
-
-}
+let video;
+let stream;
+let detector;
+let zxingReader;
 
 async function startScanner(){
 
     try{
 
-        if(codeReader){
-
-            codeReader.reset();
-
-        }
-
-        const video =
+        video =
             document.getElementById("video");
 
-        codeReader =
-            new ZXingBrowser.BrowserMultiFormatReader();
+        stream =
+            await navigator.mediaDevices.getUserMedia({
 
-        await codeReader.decodeFromVideoDevice(
+                video:{
 
-            selectedDeviceId,
-            video,
+                    facingMode:"environment",
 
-            (result,err)=>{
+                    width:{
+                        ideal:1920
+                    },
 
-                if(result){
+                    height:{
+                        ideal:1080
+                    }
 
-                    document
-                        .getElementById("result")
-                        .value = result.text;
+                },
 
-                    const line =
-                        document.getElementById("line");
+                audio:false
 
-                    line.classList.add("detected");
+            });
 
-                    navigator.vibrate?.(200);
+        video.srcObject = stream;
 
-                    setTimeout(()=>{
+        await video.play();
 
-                        line.classList.remove("detected");
+        // BarcodeDetector جدید
 
-                    },500);
+        if('BarcodeDetector' in window){
 
-                }
+            detector =
+                new BarcodeDetector({
 
-            }
+                    formats:[
+                        'ean_13',
+                        'ean_8',
+                        'upc_a',
+                        'upc_e',
+                        'code_128',
+                        'code_39',
+                        'itf',
+                        'qr_code'
+                    ]
 
-        );
+                });
+
+            detectLoop();
+
+        }
+        else{
+
+            // fallback به ZXing
+
+            startZXing();
+
+        }
 
     }
     catch(err){
 
-        alert(
-            "اجازه دوربین داده نشده یا Chrome نیست"
-        );
-
         console.log(err);
+
+        alert("خطا در دسترسی به دوربین");
 
     }
 
 }
 
-loadCameras();
+async function detectLoop(){
+
+    try{
+
+        const barcodes =
+            await detector.detect(video);
+
+        if(barcodes.length > 0){
+
+            const code =
+                barcodes[0].rawValue;
+
+            onDetected(code);
+
+        }
+
+    }
+    catch(err){
+
+    }
+
+    requestAnimationFrame(detectLoop);
+
+}
+
+function startZXing(){
+
+    zxingReader =
+        new ZXingBrowser.BrowserMultiFormatReader();
+
+    zxingReader.decodeFromVideoElement(
+
+        video,
+
+        (result,err)=>{
+
+            if(result){
+
+                onDetected(result.text);
+
+            }
+
+        }
+
+    );
+
+}
+
+function onDetected(code){
+
+    document
+        .getElementById("result")
+        .value = code;
+
+    const line =
+        document.getElementById("line");
+
+    line.classList.add("detected");
+
+    navigator.vibrate?.(150);
+
+    setTimeout(()=>{
+
+        line.classList.remove("detected");
+
+    },300);
+
+}
 
 </script>
 
