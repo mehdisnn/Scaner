@@ -6,9 +6,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Professional Barcode Scanner</title>
+<title>1D Barcode Scanner</title>
 
-<script src="https://unpkg.com/@zxing/browser@latest"></script>
+<script src="https://unpkg.com/@ericblade/quagga2/dist/quagga.min.js"></script>
 
 <style>
 
@@ -24,62 +24,66 @@ body{
     padding:15px;
 }
 
-h2{
-    margin-top:10px;
-}
-
 button{
+
     background:#e53935;
     color:white;
+
     border:none;
+
     border-radius:12px;
+
     padding:14px 24px;
+
     font-size:18px;
-    margin:10px;
+
     cursor:pointer;
+
+    margin:10px;
+
 }
 
-#videoContainer{
+#scanner{
+
     position:relative;
+
     width:95%;
-    max-width:650px;
+    max-width:700px;
+
+    height:300px;
+
     margin:auto;
+
     overflow:hidden;
+
     border-radius:18px;
+
     background:black;
-}
 
-video{
-    width:100%;
-    display:block;
-    object-fit:cover;
-}
-
-/* ناحیه اسکن */
-
-#scanBox{
-    position:absolute;
-    top:35%;
-    left:10%;
-    width:80%;
-    height:80px;
-    border:2px solid rgba(255,255,255,0.3);
-    border-radius:10px;
-    z-index:998;
 }
 
 /* خط قرمز */
 
 #line{
+
     position:absolute;
+
     top:50%;
+
     left:10%;
+
     width:80%;
+
     height:4px;
+
     background:red;
-    box-shadow:0 0 15px red;
+
+    box-shadow:0 0 18px red;
+
     z-index:999;
+
     animation:pulse 1s infinite;
+
 }
 
 @keyframes pulse{
@@ -99,26 +103,58 @@ video{
 }
 
 .detected{
+
     background:#00ff00 !important;
+
     box-shadow:0 0 20px #00ff00 !important;
+
 }
 
 input{
+
     width:90%;
-    max-width:650px;
+    max-width:700px;
+
     padding:14px;
-    border:none;
-    border-radius:10px;
+
     margin-top:15px;
-    font-size:22px;
+
+    border:none;
+
+    border-radius:10px;
+
+    font-size:24px;
+
     text-align:center;
+
 }
 
 .info{
+
     color:#ccc;
+
     margin-top:15px;
+
     line-height:1.9;
+
     font-size:14px;
+
+}
+
+video{
+
+    width:100%;
+    height:100%;
+    object-fit:cover;
+
+}
+
+canvas{
+
+    position:absolute;
+    top:0;
+    left:0;
+
 }
 
 </style>
@@ -129,10 +165,12 @@ input{
 
 <div class="container">
 
-<h2>اسکن حرفه‌ای بارکد و QR</h2>
+<h2>اسکن حرفه‌ای بارکد خطی</h2>
 
 <button onclick="startScanner()">
+
 شروع اسکن
+
 </button>
 
 <br>
@@ -145,16 +183,7 @@ placeholder="نتیجه اسکن"
 
 <br><br>
 
-<div id="videoContainer">
-
-    <video
-        id="video"
-        autoplay
-        muted
-        playsinline
-    ></video>
-
-    <div id="scanBox"></div>
+<div id="scanner">
 
     <div id="line"></div>
 
@@ -162,8 +191,8 @@ placeholder="نتیجه اسکن"
 
 <div class="info">
 
-بارکد را روی خط قرمز نگه دارید<br>
-فاصله مناسب: حدود ۱۰ تا ۲۰ سانتی‌متر
+بارکد را افقی روی خط قرمز نگه دارید<br>
+بهترین فاصله: ۸ تا ۱۵ سانتی‌متر
 
 </div>
 
@@ -171,214 +200,189 @@ placeholder="نتیجه اسکن"
 
 <script>
 
-let video;
-let stream;
-let detector;
-let zxingReader;
+let detectedRecently = false;
 
-async function startScanner(){
+function startScanner(){
+
+    Quagga.init({
+
+        inputStream:{
+
+            type:"LiveStream",
+
+            target:document.querySelector('#scanner'),
+
+            constraints:{
+
+                facingMode:"environment",
+
+                width:{
+                    ideal:1920
+                },
+
+                height:{
+                    ideal:1080
+                },
+
+                aspectRatio:1.777
+
+            },
+
+            area:{
+
+                top:"35%",
+                right:"10%",
+                left:"10%",
+                bottom:"35%"
+
+            }
+
+        },
+
+        locator:{
+
+            patchSize:"x-large",
+
+            halfSample:false
+
+        },
+
+        numOfWorkers:4,
+
+        frequency:20,
+
+        locate:true,
+
+        decoder:{
+
+            readers:[
+
+                "code_128_reader",
+                "ean_reader",
+                "ean_8_reader",
+                "upc_reader",
+                "upc_e_reader",
+                "code_39_reader",
+                "codabar_reader",
+                "i2of5_reader"
+
+            ],
+
+            multiple:false
+
+        }
+
+    },
+
+    async function(err){
+
+        if(err){
+
+            console.log(err);
+
+            alert("خطا در راه‌اندازی دوربین");
+
+            return;
+
+        }
+
+        Quagga.start();
+
+        enableCameraFeatures();
+
+    });
+
+    // هنگام تشخیص
+
+    Quagga.onDetected(function(data){
+
+        if(detectedRecently) return;
+
+        detectedRecently = true;
+
+        const code =
+            data.codeResult.code;
+
+        document
+            .getElementById("result")
+            .value = code;
+
+        navigator.vibrate?.(150);
+
+        // سبز شدن خط
+
+        const line =
+            document.getElementById("line");
+
+        line.classList.add("detected");
+
+        setTimeout(()=>{
+
+            line.classList.remove("detected");
+
+            detectedRecently = false;
+
+        },1000);
+
+    });
+
+}
+
+// autofocus و zoom
+
+async function enableCameraFeatures(){
 
     try{
 
-        video =
-            document.getElementById("video");
-
-        // باز کردن دوربین پشت
-
-        stream =
-            await navigator.mediaDevices.getUserMedia({
-
-                video:{
-
-                    facingMode:"environment",
-
-                    width:{
-                        ideal:1280
-                    },
-
-                    height:{
-                        ideal:720
-                    },
-
-                    frameRate:{
-                        ideal:30,
-                        max:60
-                    }
-
-                },
-
-                audio:false
-
-            });
-
-        video.srcObject = stream;
-
-        await video.play();
-
-        // فعال سازی autofocus و zoom
-
         const track =
-            stream.getVideoTracks()[0];
+            Quagga.CameraAccess.getActiveTrack();
 
         const capabilities =
             track.getCapabilities();
 
-        try{
+        const advanced = [];
 
-            if(capabilities.focusMode){
+        // فوکوس پیوسته
 
-                await track.applyConstraints({
+        if(capabilities.focusMode){
 
-                    advanced:[{
+            advanced.push({
 
-                        focusMode:"continuous"
+                focusMode:"continuous"
 
-                    }]
-
-                });
-
-            }
+            });
 
         }
-        catch(e){}
 
-        try{
+        // زوم
 
-            if(capabilities.zoom){
+        if(capabilities.zoom){
 
-                await track.applyConstraints({
+            advanced.push({
 
-                    advanced:[{
+                zoom:2
 
-                        zoom:2
-
-                    }]
-
-                });
-
-            }
+            });
 
         }
-        catch(e){}
 
-        // استفاده از BarcodeDetector
+        await track.applyConstraints({
 
-        if('BarcodeDetector' in window){
+            advanced:advanced
 
-            detector =
-                new BarcodeDetector({
-
-                    formats:[
-
-                        'ean_13',
-                        'ean_8',
-                        'upc_a',
-                        'upc_e',
-                        'code_128',
-                        'code_39',
-                        'itf',
-                        'qr_code'
-
-                    ]
-
-                });
-
-            detectLoop();
-
-        }
-        else{
-
-            startZXing();
-
-        }
+        });
 
     }
-    catch(err){
+    catch(e){
 
-        console.log(err);
-
-        alert(
-            "خطا در دسترسی به دوربین"
-        );
+        console.log(e);
 
     }
-
-}
-
-// حلقه تشخیص سریع
-
-async function detectLoop(){
-
-    try{
-
-        const barcodes =
-            await detector.detect(video);
-
-        if(barcodes.length > 0){
-
-            const code =
-                barcodes[0].rawValue;
-
-            onDetected(code);
-
-        }
-
-    }
-    catch(err){
-
-    }
-
-    requestAnimationFrame(detectLoop);
-
-}
-
-// fallback
-
-function startZXing(){
-
-    zxingReader =
-        new ZXingBrowser.BrowserMultiFormatReader();
-
-    zxingReader.decodeFromVideoElement(
-
-        video,
-
-        (result,err)=>{
-
-            if(result){
-
-                onDetected(result.text);
-
-            }
-
-        }
-
-    );
-
-}
-
-function onDetected(code){
-
-    document
-        .getElementById("result")
-        .value = code;
-
-    const line =
-        document.getElementById("line");
-
-    line.classList.add("detected");
-
-    navigator.vibrate?.(150);
-
-    setTimeout(()=>{
-
-        line.classList.remove("detected");
-
-    },300);
 
 }
 
 </script>
 
 </body>
+
 </html>
