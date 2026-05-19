@@ -24,29 +24,48 @@ body{
     padding:15px;
 }
 
+h2{
+    margin-top:10px;
+}
+
 button{
     background:#e53935;
     color:white;
     border:none;
     border-radius:12px;
-    padding:14px 22px;
+    padding:14px 24px;
     font-size:18px;
     margin:10px;
+    cursor:pointer;
 }
 
 #videoContainer{
     position:relative;
     width:95%;
-    max-width:600px;
+    max-width:650px;
     margin:auto;
     overflow:hidden;
-    border-radius:16px;
+    border-radius:18px;
     background:black;
 }
 
 video{
     width:100%;
     display:block;
+    object-fit:cover;
+}
+
+/* ناحیه اسکن */
+
+#scanBox{
+    position:absolute;
+    top:35%;
+    left:10%;
+    width:80%;
+    height:80px;
+    border:2px solid rgba(255,255,255,0.3);
+    border-radius:10px;
+    z-index:998;
 }
 
 /* خط قرمز */
@@ -86,7 +105,7 @@ video{
 
 input{
     width:90%;
-    max-width:600px;
+    max-width:650px;
     padding:14px;
     border:none;
     border-radius:10px;
@@ -98,7 +117,8 @@ input{
 .info{
     color:#ccc;
     margin-top:15px;
-    line-height:1.8;
+    line-height:1.9;
+    font-size:14px;
 }
 
 </style>
@@ -134,14 +154,16 @@ placeholder="نتیجه اسکن"
         playsinline
     ></video>
 
+    <div id="scanBox"></div>
+
     <div id="line"></div>
 
 </div>
 
 <div class="info">
 
-بارکد را دقیقاً روی خط قرمز نگه دارید<br>
-برای بارکد خطی فاصله کم باشد
+بارکد را روی خط قرمز نگه دارید<br>
+فاصله مناسب: حدود ۱۰ تا ۲۰ سانتی‌متر
 
 </div>
 
@@ -161,6 +183,8 @@ async function startScanner(){
         video =
             document.getElementById("video");
 
+        // باز کردن دوربین پشت
+
         stream =
             await navigator.mediaDevices.getUserMedia({
 
@@ -169,11 +193,16 @@ async function startScanner(){
                     facingMode:"environment",
 
                     width:{
-                        ideal:1920
+                        ideal:1280
                     },
 
                     height:{
-                        ideal:1080
+                        ideal:720
+                    },
+
+                    frameRate:{
+                        ideal:30,
+                        max:60
                     }
 
                 },
@@ -186,7 +215,53 @@ async function startScanner(){
 
         await video.play();
 
-        // BarcodeDetector جدید
+        // فعال سازی autofocus و zoom
+
+        const track =
+            stream.getVideoTracks()[0];
+
+        const capabilities =
+            track.getCapabilities();
+
+        try{
+
+            if(capabilities.focusMode){
+
+                await track.applyConstraints({
+
+                    advanced:[{
+
+                        focusMode:"continuous"
+
+                    }]
+
+                });
+
+            }
+
+        }
+        catch(e){}
+
+        try{
+
+            if(capabilities.zoom){
+
+                await track.applyConstraints({
+
+                    advanced:[{
+
+                        zoom:2
+
+                    }]
+
+                });
+
+            }
+
+        }
+        catch(e){}
+
+        // استفاده از BarcodeDetector
 
         if('BarcodeDetector' in window){
 
@@ -194,6 +269,7 @@ async function startScanner(){
                 new BarcodeDetector({
 
                     formats:[
+
                         'ean_13',
                         'ean_8',
                         'upc_a',
@@ -202,6 +278,7 @@ async function startScanner(){
                         'code_39',
                         'itf',
                         'qr_code'
+
                     ]
 
                 });
@@ -210,8 +287,6 @@ async function startScanner(){
 
         }
         else{
-
-            // fallback به ZXing
 
             startZXing();
 
@@ -222,11 +297,15 @@ async function startScanner(){
 
         console.log(err);
 
-        alert("خطا در دسترسی به دوربین");
+        alert(
+            "خطا در دسترسی به دوربین"
+        );
 
     }
 
 }
+
+// حلقه تشخیص سریع
 
 async function detectLoop(){
 
@@ -252,6 +331,8 @@ async function detectLoop(){
     requestAnimationFrame(detectLoop);
 
 }
+
+// fallback
 
 function startZXing(){
 
