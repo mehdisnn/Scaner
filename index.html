@@ -36,25 +36,25 @@ body{
 
 #scanner{
 
-    width:360px;
-    max-width:95%;
-    height:260px;
+    width:95%;
+    max-width:520px;
+    height:340px;
     overflow:hidden;
-    border-radius:15px;
+    border-radius:18px;
     border:3px solid #ccc;
     background:black;
 
 }
 
-/* ---------- خط ---------- */
+/* ---------- خط اسکن ---------- */
 
 #line{
 
-    width:360px;
-    max-width:95%;
-    height:4px;
+    width:95%;
+    max-width:520px;
+    height:5px;
     background:red;
-    margin:8px auto 20px auto;
+    margin:10px auto 20px auto;
     border-radius:10px;
     transition:0.2s;
 
@@ -77,10 +77,10 @@ body{
 .product{
 
     background:white;
-    border-radius:12px;
-    padding:12px;
-    margin-bottom:12px;
-    box-shadow:0 2px 6px rgba(0,0,0,0.1);
+    border-radius:14px;
+    padding:14px;
+    margin-bottom:14px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.1);
 
 }
 
@@ -88,9 +88,20 @@ body{
 
 .barcode{
 
+    font-size:28px;
+    font-weight:bold;
+    margin-bottom:10px;
+
+}
+
+/* ---------- نام کالا ---------- */
+
+.product-name{
+
     font-size:26px;
     font-weight:bold;
-    margin-bottom:12px;
+    margin-bottom:15px;
+    color:#333;
 
 }
 
@@ -107,15 +118,15 @@ body{
 .field{
 
     flex:1;
-    min-width:120px;
+    min-width:130px;
 
 }
 
 .field label{
 
     display:block;
-    margin-bottom:5px;
-    font-size:16px;
+    margin-bottom:6px;
+    font-size:18px;
     font-weight:bold;
 
 }
@@ -123,10 +134,10 @@ body{
 .field input{
 
     width:100%;
-    height:60px;
+    height:70px;
     border:none;
-    border-radius:10px;
-    font-size:28px;
+    border-radius:12px;
+    font-size:32px;
     text-align:center;
     font-weight:bold;
     color:white;
@@ -141,7 +152,7 @@ body{
 
 }
 
-/* قیمت تخفیف */
+/* قیمت تخفیفی */
 
 .discount-price{
 
@@ -164,7 +175,9 @@ body{
 <body>
 
 <h2>
-اسکن بارکد
+
+اسکن بارکد کالا
+
 </h2>
 
 <!-- دوربین -->
@@ -179,11 +192,11 @@ body{
 
 <div id="line"></div>
 
-<!-- لیست محصولات -->
+<!-- لیست -->
 
 <div id="productList"></div>
 
-<!-- صدای بوق -->
+<!-- بوق -->
 
 <audio id="beep">
 
@@ -202,8 +215,13 @@ src="https://actions.google.com/sounds/v1/cartoon/beep_short.ogg">
 
 let detectedRecently = false;
 
+/* ---------------- گوگل شیت ---------------- */
+
+const SHEET_URL =
+"https://opensheet.elk.sh/1SlLYHirdkf9xz0RlI7KBODmg7KeA_BhnUC-4Eo4j1Jc/Sheet1";
+
 /* ---------------- راه‌اندازی دوربین ---------------- */
-/* همون الگوریتم قبلی خودت */
+/* الگوریتم اصلی خودت بدون تغییر */
 
 Quagga.init({
 
@@ -257,7 +275,7 @@ async function(err){
 });
 
 /* ---------------- هنگام تشخیص ---------------- */
-/* همون ساختار قبلی */
+/* الگوریتم اصلی خودت بدون تغییر */
 
 Quagga.onDetected(async function(data){
 
@@ -268,7 +286,9 @@ Quagga.onDetected(async function(data){
     const code =
         data.codeResult.code;
 
-    /* بوق موفقیت */
+    console.log(code);
+
+    /* بوق */
 
     const beep =
         document.getElementById("beep");
@@ -293,6 +313,8 @@ Quagga.onDetected(async function(data){
 
     addProduct(product);
 
+    /* ویبره */
+
     navigator.vibrate?.(150);
 
     setTimeout(()=>{
@@ -305,28 +327,7 @@ Quagga.onDetected(async function(data){
 
 });
 
-/* ---------------- گوگل شیت ---------------- */
-
-/*
-
-ستون ها:
-
-A = barcode
-B = original_price
-C = discount_price
-
-*/
-
-/* آدرس فایل */
-
-const SHEET_URL =
-"https://opensheet.elk.sh/SPREADSHEET_ID/Sheet1";
-
-/*
-به جای
-SPREADSHEET_ID
-آیدی گوگل شیت خودت را قرار بده
-*/
+/* ---------------- خواندن گوگل شیت ---------------- */
 
 async function getProductFromSheet(barcode){
 
@@ -338,6 +339,8 @@ async function getProductFromSheet(barcode){
         const data =
             await response.json();
 
+        /* جستجو در ستون barcode */
+
         const item =
             data.find(x => x.barcode == barcode);
 
@@ -347,11 +350,11 @@ async function getProductFromSheet(barcode){
 
                 barcode: barcode,
 
-                originalPrice:
-                    item.original_price,
+                name: item.name,
 
-                discountPrice:
-                    item.discount_price
+                originalPrice: item.originalPrice,
+
+                discountPrice: item.discountPrice
 
             };
 
@@ -369,9 +372,11 @@ async function getProductFromSheet(barcode){
 
         barcode: barcode,
 
-        originalPrice:"ناموجود",
+        name: "کالا یافت نشد",
 
-        discountPrice:"ناموجود"
+        originalPrice: "-",
+
+        discountPrice: "-"
 
     };
 
@@ -394,6 +399,12 @@ function addProduct(product){
         <div class="barcode">
 
             ${product.barcode}
+
+        </div>
+
+        <div class="product-name">
+
+            ${product.name}
 
         </div>
 
@@ -467,8 +478,8 @@ function addProduct(product){
 
 }
 
-/* ---------------- autofocus + zoom ---------------- */
-/* همون کد قبلی خودت */
+/* ---------------- autofocus + zoom + flash ---------------- */
+/* الگوریتم قبلی حفظ شده */
 
 async function enableCameraFeatures(){
 
@@ -501,6 +512,18 @@ async function enableCameraFeatures(){
             advanced.push({
 
                 zoom:2
+
+            });
+
+        }
+
+        /* روشن کردن فلش */
+
+        if(capabilities.torch){
+
+            advanced.push({
+
+                torch:true
 
             });
 
